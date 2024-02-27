@@ -6,21 +6,19 @@
 
 constexpr double MY_PI = 3.1415926;
 
-Eigen::Matrix4f get_view_matrix(Eigen::Vector3f eye_pos)
-{
+Eigen::Matrix4f get_view_matrix(Eigen::Vector3f eye_pos) {
     Eigen::Matrix4f view = Eigen::Matrix4f::Identity();
 
     Eigen::Matrix4f translate;
     translate << 1, 0, 0, -eye_pos[0], 0, 1, 0, -eye_pos[1], 0, 0, 1,
-        -eye_pos[2], 0, 0, 0, 1;
+            -eye_pos[2], 0, 0, 0, 1;
 
     view = translate * view;
 
     return view;
 }
 
-Eigen::Matrix4f get_model_matrix(float rotation_angle)
-{
+Eigen::Matrix4f get_model_matrix(float rotation_angle) {
     Eigen::Matrix4f model = Eigen::Matrix4f::Identity();
 
     // TODO: Implement this function
@@ -33,18 +31,19 @@ Eigen::Matrix4f get_model_matrix(float rotation_angle)
     axis = axis / axis.norm();
 
     model << cos(rotation_angle), -sin(rotation_angle), 0, 0,
-             sin(rotation_angle), cos(rotation_angle), 0, 0,
-             0, 0, 1, 0,
-             0, 0, 0, 1;
+            sin(rotation_angle), cos(rotation_angle), 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1;
 
     Eigen::Matrix3f S;
     S << 0, -axis.z(), axis.y(),
-         axis.z(), 0, -axis.x(),
-         -axis.y(), axis.x(), 0;
-    Eigen::Matrix3f R = (cos(rotation_angle) * Eigen::Matrix3f::Identity()) + ((1 - cos(rotation_angle)) * axis * axis.transpose()) + (sin(rotation_angle) * S);
+            axis.z(), 0, -axis.x(),
+            -axis.y(), axis.x(), 0;
+    Eigen::Matrix3f R = (cos(rotation_angle) * Eigen::Matrix3f::Identity()) +
+                        ((1 - cos(rotation_angle)) * axis * axis.transpose()) + (sin(rotation_angle) * S);
 
     model << R, Eigen::Vector3f(0, 0, 0),
-             0, 0, 0, 1;
+            0, 0, 0, 1;
 
     std::cout << model.determinant() << std::endl;
 
@@ -52,8 +51,7 @@ Eigen::Matrix4f get_model_matrix(float rotation_angle)
 }
 
 Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio,
-                                      float zNear, float zFar)
-{
+                                      float zNear, float zFar) {
     // Students will implement this function
 
     Eigen::Matrix4f projection = Eigen::Matrix4f::Identity();
@@ -63,20 +61,36 @@ Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio,
     // Then return it.
 
     using namespace std;
-    cout << eye_fov << ' ';
     eye_fov = eye_fov / 180 * MY_PI;
-    cout << eye_fov << endl;
 
-    projection << 1 / (aspect_ratio * tan(eye_fov / 2)), 0, 0, 0,
-                  0, 1 / tan(eye_fov / 2), 0, 0,
-                  0, 0, (zNear + zFar) / (zNear - zFar), 2 * zNear * zFar / (zNear - zFar),
-                  0, 0, 1, 0;
+    Eigen::Matrix4f P, Q, T;
+    P << zNear, 0, 0, 0,
+            0, zNear, 0, 0,
+            0, 0, zNear + zFar, -zNear * zFar,
+            0, 0, 1, 0;
+    float t = tan(eye_fov / 2) * zNear;
+    float b = -t;
+    float r = t * aspect_ratio;
+    float l = -r;
+    Q << 2/(r-l), 0, 0, 0,
+            0, 2/(t-b), 0, 0,
+            0, 0, 2/(zNear-zFar), 0,
+            0, 0, 0, 1;
+    T << 1, 0, 0, -(r+l)/2,
+            0, 1, 0, -(t+b)/2,
+            0, 0, 1, -(zNear+zFar)/2,
+            0, 0, 0, 1;
+    projection = T * Q * P;
+
+//    projection << 1 / (aspect_ratio * tan(eye_fov / 2)), 0, 0, 0,
+//                  0, 1 / tan(eye_fov / 2), 0, 0,
+//                  0, 0, (zNear + zFar) / (zNear - zFar), 2 * zNear * zFar / (zNear - zFar),
+//                  0, 0, 1, 0;
 
     return projection;
 }
 
-int main(int argc, const char** argv)
-{
+int main(int argc, const char **argv) {
     float angle = 0;
     bool command_line = false;
     std::string filename = "output.png";
@@ -93,7 +107,9 @@ int main(int argc, const char** argv)
 
     Eigen::Vector3f eye_pos = {0, 0, 5};
 
-    std::vector<Eigen::Vector3f> pos{{2, 0, 0}, {0, 2, 0}, {-2, 0, 0}};
+    std::vector<Eigen::Vector3f> pos{{2,  0, -2},
+                                     {0,  2, -2},
+                                     {-2, 0, -2}};
 
     std::vector<Eigen::Vector3i> ind{{0, 1, 2}};
 
@@ -138,8 +154,7 @@ int main(int argc, const char** argv)
 
         if (key == 'a') {
             angle += 10;
-        }
-        else if (key == 'd') {
+        } else if (key == 'd') {
             angle -= 10;
         }
     }
