@@ -24,6 +24,18 @@ global.hpp
 Triangle.hpp
 /home/stevenzhang/codes/games101/Homework2/代码框架/Triangle.hpp
 
+/home/stevenzhang/codes/games101/Homework2/代码框架/rasterizer.cpp
+algorithm
+-
+vector
+-
+rasterizer.hpp
+/home/stevenzhang/codes/games101/Homework2/代码框架/rasterizer.hpp
+opencv2/opencv.hpp
+-
+math.h
+-
+
 /home/stevenzhang/codes/games101/Homework2/代码框架/rasterizer.hpp
 eigen3/Eigen/Eigen
 -
