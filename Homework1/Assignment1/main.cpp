@@ -27,6 +27,27 @@ Eigen::Matrix4f get_model_matrix(float rotation_angle)
     // Create the model matrix for rotating the triangle around the Z axis.
     // Then return it.
 
+    rotation_angle = rotation_angle / 180 * MY_PI;
+
+    Eigen::Vector3f axis(1, 1, 0);
+    axis = axis / axis.norm();
+
+    model << cos(rotation_angle), -sin(rotation_angle), 0, 0,
+             sin(rotation_angle), cos(rotation_angle), 0, 0,
+             0, 0, 1, 0,
+             0, 0, 0, 1;
+
+    Eigen::Matrix3f S;
+    S << 0, -axis.z(), axis.y(),
+         axis.z(), 0, -axis.x(),
+         -axis.y(), axis.x(), 0;
+    Eigen::Matrix3f R = (cos(rotation_angle) * Eigen::Matrix3f::Identity()) + ((1 - cos(rotation_angle)) * axis * axis.transpose()) + (sin(rotation_angle) * S);
+
+    model << R, Eigen::Vector3f(0, 0, 0),
+             0, 0, 0, 1;
+
+    std::cout << model.determinant() << std::endl;
+
     return model;
 }
 
@@ -40,6 +61,16 @@ Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio,
     // TODO: Implement this function
     // Create the projection matrix for the given parameters.
     // Then return it.
+
+    using namespace std;
+    cout << eye_fov << ' ';
+    eye_fov = eye_fov / 180 * MY_PI;
+    cout << eye_fov << endl;
+
+    projection << 1 / (aspect_ratio * tan(eye_fov / 2)), 0, 0, 0,
+                  0, 1 / tan(eye_fov / 2), 0, 0,
+                  0, 0, (zNear + zFar) / (zNear - zFar), 2 * zNear * zFar / (zNear - zFar),
+                  0, 0, 1, 0;
 
     return projection;
 }
@@ -62,7 +93,7 @@ int main(int argc, const char** argv)
 
     Eigen::Vector3f eye_pos = {0, 0, 5};
 
-    std::vector<Eigen::Vector3f> pos{{2, 0, -2}, {0, 2, -2}, {-2, 0, -2}};
+    std::vector<Eigen::Vector3f> pos{{2, 0, 0}, {0, 2, 0}, {-2, 0, 0}};
 
     std::vector<Eigen::Vector3i> ind{{0, 1, 2}};
 
@@ -80,6 +111,7 @@ int main(int argc, const char** argv)
         r.set_projection(get_projection_matrix(45, 1, 0.1, 50));
 
         r.draw(pos_id, ind_id, rst::Primitive::Triangle);
+
         cv::Mat image(700, 700, CV_32FC3, r.frame_buffer().data());
         image.convertTo(image, CV_8UC3, 1.0f);
 
