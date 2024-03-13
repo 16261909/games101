@@ -50,7 +50,12 @@ Eigen::Matrix4f get_model_matrix(float angle)
 Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio, float zNear, float zFar)
 {
     // TODO: Use the same projection matrix from the previous assignments
-
+    Matrix4f projection;
+    projection << 1 / (aspect_ratio * tan(eye_fov / 2)), 0, 0, 0,
+              0, 1 / tan(eye_fov / 2), 0, 0,
+              0, 0, (zNear + zFar) / (zNear - zFar), 2 * zNear * zFar / (zNear - zFar),
+              0, 0, -1, 0;
+    return projection;
 }
 
 Eigen::Vector3f vertex_shader(const vertex_shader_payload& payload)
@@ -84,7 +89,7 @@ Eigen::Vector3f texture_fragment_shader(const fragment_shader_payload& payload)
     if (payload.texture)
     {
         // TODO: Get the texture value at the texture coordinates of the current fragment
-
+        return_color = payload.texture->getColor(payload.tex_coords.x(), payload.tex_coords.y());
     }
     Eigen::Vector3f texture_color;
     texture_color << return_color.x(), return_color.y(), return_color.z();
@@ -108,11 +113,17 @@ Eigen::Vector3f texture_fragment_shader(const fragment_shader_payload& payload)
 
     Eigen::Vector3f result_color = {0, 0, 0};
 
+    Eigen::Vector3f view_dir = (eye_pos - point).normalized();
+    result_color += ka.cwiseProduct(amb_light_intensity);
     for (auto& light : lights)
     {
-        // TODO: For each light source in the code, calculate what the *ambient*, *diffuse*, and *specular* 
+        // TODO: For each light source in the code, calculate what the *ambient*, *diffuse*, and *specular*
         // components are. Then, accumulate that result on the *result_color* object.
-
+        Eigen::Vector3f light_dir = (light.position - point).normalized();
+        Eigen::Vector3f h = (light_dir + view_dir).normalized();
+        float dis = (point - light.position).squaredNorm();
+        result_color += kd.cwiseProduct(light.intensity) / dis * std::max(0.0f, normal.dot(light_dir));
+        result_color += ks.cwiseProduct(light.intensity) / dis * std::pow(std::max(0.0f, normal.dot(h)), p);
     }
 
     return result_color * 255.f;
@@ -137,12 +148,20 @@ Eigen::Vector3f phong_fragment_shader(const fragment_shader_payload& payload)
     Eigen::Vector3f point = payload.view_pos;
     Eigen::Vector3f normal = payload.normal;
 
+
     Eigen::Vector3f result_color = {0, 0, 0};
+
+    Eigen::Vector3f view_dir = (eye_pos - point).normalized();
+    result_color += ka.cwiseProduct(amb_light_intensity);
     for (auto& light : lights)
     {
         // TODO: For each light source in the code, calculate what the *ambient*, *diffuse*, and *specular* 
         // components are. Then, accumulate that result on the *result_color* object.
-        
+        Eigen::Vector3f light_dir = (light.position - point).normalized();
+        Eigen::Vector3f h = (light_dir + view_dir).normalized();
+        float dis = (point - light.position).squaredNorm();
+        result_color += kd.cwiseProduct(light.intensity) / dis * std::max(0.0f, normal.dot(light_dir));
+        result_color += ks.cwiseProduct(light.intensity) / dis * std::pow(std::max(0.0f, normal.dot(h)), p);
     }
 
     return result_color * 255.f;
@@ -183,17 +202,41 @@ Eigen::Vector3f displacement_fragment_shader(const fragment_shader_payload& payl
     // Position p = p + kn * n * h(u,v)
     // Normal n = normalize(TBN * ln)
 
-
     Eigen::Vector3f result_color = {0, 0, 0};
 
+    Vector3f t, b, ln;
+    float du, dv, x, y, z;
+    x = normal.x();
+    y = normal.y();
+    z = normal.z();
+
+    Matrix3f TBN;
+    t << x*y/sqrt(x*x+z*z), sqrt(x*x+z*z), z*y/sqrt(x*x+z*z);
+
+
+    b << normal.cross(t);
+    TBN << t, b, normal;
+    float u = std::clamp(payload.tex_coords.x(), 0.0f, 1.0f), v = std::clamp(payload.tex_coords.y(), 0.0f, 1.0f);
+    float w = payload.texture->width, h = payload.texture->height;
+    du = kh * kn * (payload.texture->getColor(std::clamp(u+1/w, 0.0f, 1.0f),v).norm()-payload.texture->getColor(u,v).norm());
+    dv = kh * kn * (payload.texture->getColor(u,std::clamp(v+1/h, 0.0f, 1.0f)).norm()-payload.texture->getColor(u,v).norm());
+    ln << -du, -dv, 1;
+
+    point += kn * normal * payload.texture->getColor(u,v).norm();
+    normal = (TBN * ln).normalized();
+
+    Eigen::Vector3f view_dir = (eye_pos - point).normalized();
+    result_color += ka.cwiseProduct(amb_light_intensity);
     for (auto& light : lights)
     {
-        // TODO: For each light source in the code, calculate what the *ambient*, *diffuse*, and *specular* 
+        // TODO: For each light source in the code, calculate what the *ambient*, *diffuse*, and *specular*
         // components are. Then, accumulate that result on the *result_color* object.
-
-
+        Eigen::Vector3f light_dir = (light.position - point).normalized();
+        Eigen::Vector3f h = (light_dir + view_dir).normalized();
+        float dis = (point - light.position).squaredNorm();
+        result_color += kd.cwiseProduct(light.intensity) / dis * std::max(0.0f, normal.dot(light_dir));
+        result_color += ks.cwiseProduct(light.intensity) / dis * std::pow(std::max(0.0f, normal.dot(h)), p);
     }
-
     return result_color * 255.f;
 }
 
@@ -233,6 +276,25 @@ Eigen::Vector3f bump_fragment_shader(const fragment_shader_payload& payload)
 
 
     Eigen::Vector3f result_color = {0, 0, 0};
+
+    Vector3f t, b, ln;
+    float du, dv, x, y, z;
+    x = normal.x();
+    y = normal.y();
+    z = normal.z();
+
+    Matrix3f TBN;
+    t << x*y/sqrt(x*x+z*z), sqrt(x*x+z*z), z*y/sqrt(x*x+z*z);
+
+
+    b << normal.cross(t);
+    TBN << t, b, normal;
+    float u = std::clamp(payload.tex_coords.x(), 0.0f, 1.0f), v = std::clamp(payload.tex_coords.y(), 0.0f, 1.0f);
+    float w = payload.texture->width, h = payload.texture->height;
+    du = kh * kn * (payload.texture->getColor(std::clamp(u+1/w, 0.0f, 1.0f),v).norm()-payload.texture->getColor(u,v).norm());
+    dv = kh * kn * (payload.texture->getColor(u,std::clamp(v+1/h, 0.0f, 1.0f)).norm()-payload.texture->getColor(u,v).norm());
+    ln << -du, -dv, 1;
+    normal = (TBN * ln).normalized();
     result_color = normal;
 
     return result_color * 255.f;
