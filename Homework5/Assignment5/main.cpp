@@ -10,7 +10,6 @@
 int main()
 {
     Scene scene(1280, 960);
-
     auto sph1 = std::make_unique<Sphere>(Vector3f(-1, 0, -12), 2);
     sph1->materialType = DIFFUSE_AND_GLOSSY;
     sph1->diffuseColor = Vector3f(0.6, 0.7, 0.8);
