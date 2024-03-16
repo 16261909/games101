@@ -9,34 +9,24 @@
 #include <cassert>
 #include <array>
 
-bool rayTriangleIntersect(const Vector3f& v0, const Vector3f& v1,
-                          const Vector3f& v2, const Vector3f& orig,
+bool rayTriangleIntersect(const Vector3f& v0, const Vector3f& v1, const Vector3f& v2, const Vector3f& orig,
                           const Vector3f& dir, float& tnear, float& u, float& v)
 {
-    Vector3f edge1 = v1 - v0;
-    Vector3f edge2 = v2 - v0;
-    Vector3f pvec = crossProduct(dir, edge2);
-    float det = dotProduct(edge1, pvec);
-    if (det == 0 || det < 0)
-        return false;
+    // TODO: Implement this function that tests whether the triangle
+    // that's specified bt v0, v1 and v2 intersects with the ray (whose
+    // origin is *orig* and direction is *dir*)
+    // Also don't forget to update tnear, u and v.
 
-    Vector3f tvec = orig - v0;
-    u = dotProduct(tvec, pvec);
-    if (u < 0 || u > det)
-        return false;
-
-    Vector3f qvec = crossProduct(tvec, edge1);
-    v = dotProduct(dir, qvec);
-    if (v < 0 || u + v > det)
-        return false;
-
-    float invDet = 1 / det;
-
-    tnear = dotProduct(edge2, qvec) * invDet;
-    u *= invDet;
-    v *= invDet;
-
-    return true;
+    Vector3f e1 = v1 - v0;
+    Vector3f e2 = v2 - v0;
+    Vector3f s = orig - v0;
+    Vector3f s1 = crossProduct(dir, e2);
+    Vector3f s2 = crossProduct(s, e1);
+    float a = 1 / dotProduct(s1, e1);
+    tnear = a * dotProduct(s2, e2);
+    u = a * dotProduct(s1, s);
+    v = a * dotProduct(s2, dir);
+    return tnear > 0 && u >= 0 && v >= 0 && (u + v) <= 1;
 }
 
 class Triangle : public Object
@@ -232,10 +222,15 @@ inline Intersection Triangle::getIntersection(Ray ray)
     t_tmp = dotProduct(e2, qvec) * det_inv;
 
     // TODO find ray triangle intersection
-
-
-
-
+    if (t_tmp < 0) {
+        return inter;
+    }
+    inter.distance = t_tmp;
+    inter.happened = true;
+    inter.normal = normal;
+    inter.coords = ray(t_tmp);
+    inter.obj = this;
+    inter.m = m;
     return inter;
 }
 
