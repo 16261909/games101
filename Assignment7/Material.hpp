@@ -160,20 +160,23 @@ float Material::pdf(const Vector3f &wi, const Vector3f &wo, const Vector3f &N){
 }
 
 Vector3f Material::eval(const Vector3f &wi, const Vector3f &wo, const Vector3f &N){
+    
     switch(m_type){
         case DIFFUSE:
         {
             // calculate the contribution of diffuse   model
             float cosalpha = dotProduct(N, wo);
             if (cosalpha > 0.0f) {
-                Vector3f diffuse = Kd / M_PI;
-                return diffuse;
+                Vector3f diffuse = Kd / M_PI;                
+                return diffuse;                
             }
             else
                 return Vector3f(0.0f);
             break;
         }
-    }
+    }    
+
+    return Vector3f(0.0f);
 }
 
 #endif //RAYTRACING_MATERIAL_H
